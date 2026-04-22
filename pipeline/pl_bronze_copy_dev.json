@@ -1,0 +1,514 @@
+{
+	"name": "pl_bronze_copy_dev",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEach_File",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.p_child_items",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 4,
+					"activities": [
+						{
+							"name": "Get_File_Metadata",
+							"type": "GetMetadata",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:30:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "ds_src_file_dev",
+									"type": "DatasetReference",
+									"parameters": {
+										"p_folder_name": "@pipeline().parameters.p_folder_name",
+										"p_file_name": "@item().name"
+									}
+								},
+								"fieldList": [
+									"lastModified",
+									"size",
+									"columnCount"
+								],
+								"storeSettings": {
+									"type": "FileServerReadSettings",
+									"recursive": false,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							}
+						},
+						{
+							"name": "If_Valid_File",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "Get_File_Metadata",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@and(and(and(greater(length(item().name), 10), endsWith(toLower(item().name), '.csv')), equals(activity('Get_File_Metadata').output.columnCount, pipeline().parameters.p_expected_column_count)), greater(activity('Get_File_Metadata').output.size, 0))",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "Log_Invalid",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 2,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "dbo.usp_insert_file_tracking",
+											"storedProcedureParameters": {
+												"pipeline_run_id": {
+													"value": {
+														"value": "@pipeline().parameters.p_pipeline_run_id",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"table_name": {
+													"value": {
+														"value": "@pipeline().parameters.p_folder_name",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"file_name": {
+													"value": {
+														"value": "@item().name",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"last_modified": {
+													"value": {
+														"value": "@activity('Get_File_Metadata').output.lastModified",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												},
+												"status": {
+													"value": {
+														"value": "@if(equals(activity('Get_File_Metadata').output.size, 0), 'EmptyFile', if(and(greater(length(item().name), 10), endsWith(toLower(item().name), '.csv')), 'SchemaInvalid', 'InvalidFilename'))",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"load_time": {
+													"value": {
+														"value": "@utcNow()",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												},
+												"file_size_bytes": {
+													"value": {
+														"value": "@activity('Get_File_Metadata').output.size",
+														"type": "Expression"
+													},
+													"type": "Int64"
+												},
+												"rows_copied": {
+													"value": "0",
+													"type": "Int32"
+												},
+												"error_message": {
+													"value": {
+														"value": "@if(equals(activity('Get_File_Metadata').output.size, 0), 'File is empty', if(and(greater(length(item().name), 10), endsWith(toLower(item().name), '.csv')), concat('Schema invalid: expected ', string(pipeline().parameters.p_expected_column_count), ' columns but found ', string(activity('Get_File_Metadata').output.columnCount)), 'Invalid filename format'))",
+														"type": "Expression"
+													},
+													"type": "String"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "ls_sqldb_watermark_dev",
+											"type": "LinkedServiceReference"
+										}
+									}
+								]
+							}
+						},
+						{
+							"name": "If_New_File",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "If_Valid_File",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@and(and(and(and(greater(length(item().name), 10), endsWith(toLower(item().name), '.csv')), equals(activity('Get_File_Metadata').output.columnCount, pipeline().parameters.p_expected_column_count)), greater(activity('Get_File_Metadata').output.size, 0)), greater(activity('Get_File_Metadata').output.lastModified, pipeline().parameters.p_last_modified))",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "Log_Skipped",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 2,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "dbo.usp_insert_file_tracking",
+											"storedProcedureParameters": {
+												"pipeline_run_id": {
+													"value": {
+														"value": "@pipeline().parameters.p_pipeline_run_id",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"table_name": {
+													"value": {
+														"value": "@pipeline().parameters.p_folder_name",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"file_name": {
+													"value": {
+														"value": "@item().name",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"last_modified": {
+													"value": {
+														"value": "@activity('Get_File_Metadata').output.lastModified",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												},
+												"status": {
+													"value": "Skipped",
+													"type": "String"
+												},
+												"load_time": {
+													"value": {
+														"value": "@utcNow()",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												},
+												"file_size_bytes": {
+													"value": {
+														"value": "@activity('Get_File_Metadata').output.size",
+														"type": "Expression"
+													},
+													"type": "Int64"
+												},
+												"rows_copied": {
+													"value": "0",
+													"type": "Int32"
+												},
+												"error_message": {
+													"value": null,
+													"type": "String"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "ls_sqldb_watermark_dev",
+											"type": "LinkedServiceReference"
+										}
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "Copy_File_To_Bronze",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 3,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "DelimitedTextSource",
+												"storeSettings": {
+													"type": "FileServerReadSettings",
+													"recursive": false,
+													"enablePartitionDiscovery": false
+												},
+												"formatSettings": {
+													"type": "DelimitedTextReadSettings"
+												}
+											},
+											"sink": {
+												"type": "DelimitedTextSink",
+												"storeSettings": {
+													"type": "AzureBlobFSWriteSettings",
+													"copyBehavior": "PreserveHierarchy"
+												},
+												"formatSettings": {
+													"type": "DelimitedTextWriteSettings",
+													"quoteAllText": true,
+													"fileExtension": ".csv"
+												}
+											},
+											"enableStaging": false
+										},
+										"inputs": [
+											{
+												"referenceName": "ds_src_file_dev",
+												"type": "DatasetReference",
+												"parameters": {
+													"p_folder_name": "@pipeline().parameters.p_folder_name",
+													"p_file_name": "@item().name"
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "ds_sink_adls_bronze_dev",
+												"type": "DatasetReference",
+												"parameters": {
+													"p_folder_name": "@pipeline().parameters.p_folder_name",
+													"p_year": "@substring(substring(item().name, 0, sub(length(item().name), 4)), sub(length(substring(item().name, 0, sub(length(item().name), 4))), 10), 4)",
+													"p_month": "@substring(substring(item().name, 0, sub(length(item().name), 4)), add(sub(length(substring(item().name, 0, sub(length(item().name), 4))), 10), 5), 2)",
+													"p_file_name": "@item().name"
+												}
+											}
+										]
+									},
+									{
+										"name": "Log_Success",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [
+											{
+												"activity": "Copy_File_To_Bronze",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 2,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "dbo.usp_insert_file_tracking",
+											"storedProcedureParameters": {
+												"pipeline_run_id": {
+													"value": {
+														"value": "@pipeline().parameters.p_pipeline_run_id",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"table_name": {
+													"value": {
+														"value": "@pipeline().parameters.p_folder_name",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"file_name": {
+													"value": {
+														"value": "@item().name",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"last_modified": {
+													"value": {
+														"value": "@activity('Get_File_Metadata').output.lastModified",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												},
+												"status": {
+													"value": "Success",
+													"type": "String"
+												},
+												"load_time": {
+													"value": {
+														"value": "@utcNow()",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												},
+												"file_size_bytes": {
+													"value": {
+														"value": "@activity('Get_File_Metadata').output.size",
+														"type": "Expression"
+													},
+													"type": "Int64"
+												},
+												"rows_copied": {
+													"value": {
+														"value": "@activity('Copy_File_To_Bronze').output.filesWritten",
+														"type": "Expression"
+													},
+													"type": "Int32"
+												},
+												"error_message": {
+													"value": null,
+													"type": "String"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "ls_sqldb_watermark_dev",
+											"type": "LinkedServiceReference"
+										}
+									},
+									{
+										"name": "Log_Copy_Failed",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [
+											{
+												"activity": "Copy_File_To_Bronze",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 2,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "dbo.usp_insert_file_tracking",
+											"storedProcedureParameters": {
+												"pipeline_run_id": {
+													"value": {
+														"value": "@pipeline().parameters.p_pipeline_run_id",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"table_name": {
+													"value": {
+														"value": "@pipeline().parameters.p_folder_name",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"file_name": {
+													"value": {
+														"value": "@item().name",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"last_modified": {
+													"value": {
+														"value": "@activity('Get_File_Metadata').output.lastModified",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												},
+												"status": {
+													"value": "Failed",
+													"type": "String"
+												},
+												"load_time": {
+													"value": {
+														"value": "@utcNow()",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												},
+												"file_size_bytes": {
+													"value": {
+														"value": "@activity('Get_File_Metadata').output.size",
+														"type": "Expression"
+													},
+													"type": "Int64"
+												},
+												"rows_copied": {
+													"value": "0",
+													"type": "Int32"
+												},
+												"error_message": {
+													"value": {
+														"value": "@activity('Copy_File_To_Bronze').error.message",
+														"type": "Expression"
+													},
+													"type": "String"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "ls_sqldb_watermark_dev",
+											"type": "LinkedServiceReference"
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"p_folder_name": {
+				"type": "string"
+			},
+			"p_child_items": {
+				"type": "array"
+			},
+			"p_last_modified": {
+				"type": "string"
+			},
+			"p_expected_column_count": {
+				"type": "int"
+			},
+			"p_pipeline_run_id": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-03-30T16:29:08Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

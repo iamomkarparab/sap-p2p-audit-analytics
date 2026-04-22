@@ -1,0 +1,13 @@
+{
+	"name": "ds_sqldb_dev",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_sqldb_watermark_dev",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

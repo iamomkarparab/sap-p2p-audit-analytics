@@ -1,0 +1,6 @@
+{
+	"name": "IR-SHIR-ONPREM-ADLSDEV",
+	"properties": {
+		"type": "SelfHosted"
+	}
+}

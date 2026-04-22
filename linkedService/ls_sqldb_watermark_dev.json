@@ -1,0 +1,17 @@
+{
+	"name": "ls_sqldb_watermark_dev",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"server": "sql-p2p-src-dev-01.database.windows.net",
+			"database": "sqldb-p2p-free-dev",
+			"encrypt": "mandatory",
+			"trustServerCertificate": false,
+			"authenticationType": "SQL",
+			"userName": "sqladmin_p2p",
+			"encryptedCredential": "ew0KICAiVmVyc2lvbiI6ICIyMDE3LTExLTMwIiwNCiAgIlByb3RlY3Rpb25Nb2RlIjogIktleSIsDQogICJTZWNyZXRDb250ZW50VHlwZSI6ICJQbGFpbnRleHQiLA0KICAiQ3JlZGVudGlhbElkIjogIkRBVEFGQUNUT1JZQDhDMEQ0MzRFLThFNDYtNEVCNS04QzdCLTFCQzA3QUQ1Q0U5N18xYTkwZGU0OS1lYjgwLTRmNjgtOTY5OC0xYTE3NDA5NzkwNTYiDQp9"
+		}
+	}
+}

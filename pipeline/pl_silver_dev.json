@@ -1,0 +1,30 @@
+{
+	"name": "pl_silver_dev",
+	"properties": {
+		"activities": [
+			{
+				"name": "Run_Silver_PO_Report",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/meshailajaparab@outlook.com/nb_silver_transform_dev"
+				},
+				"linkedServiceName": {
+					"referenceName": "ls_databricks_dev",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2026-04-07T02:01:10Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,682 @@
+{
+	"name": "pl_bronze_ingest_dev",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lookup_TableConfig",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:30:00",
+					"retry": 2,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT folder_path, expected_column_count, expected_file_extension FROM dbo.table_config WHERE is_active = 1",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_sqldb_dev",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_Folder",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup_TableConfig",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup_TableConfig').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 2,
+					"activities": [
+						{
+							"name": "Log_Folder_Start",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:10:00",
+								"retry": 2,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "dbo.usp_insert_pipeline_run_audit",
+								"storedProcedureParameters": {
+									"run_id": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"pipeline_name": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"folder_name": {
+										"value": {
+											"value": "@item().folder_path",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"start_time": {
+										"value": {
+											"value": "@utcNow()",
+											"type": "Expression"
+										},
+										"type": "DateTime"
+									},
+									"status": {
+										"value": "Started",
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ls_sqldb_watermark_dev",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Lookup_Watermark",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Log_Folder_Start",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.00:30:00",
+								"retry": 2,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderStoredProcedureName": "dbo.usp_get_watermark",
+									"storedProcedureParameters": {
+										"table_name": {
+											"type": "String",
+											"value": {
+												"value": "@item().folder_path",
+												"type": "Expression"
+											}
+										}
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "ds_sqldb_dev",
+									"type": "DatasetReference"
+								},
+								"firstRowOnly": true
+							}
+						},
+						{
+							"name": "Get_Metadata_Files",
+							"type": "GetMetadata",
+							"dependsOn": [
+								{
+									"activity": "Lookup_Watermark",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.02:00:00",
+								"retry": 2,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "ds_src_file_dev",
+									"type": "DatasetReference",
+									"parameters": {
+										"p_folder_name": "@item().folder_path",
+										"p_file_name": "*"
+									}
+								},
+								"fieldList": [
+									"childItems"
+								],
+								"storeSettings": {
+									"type": "FileServerReadSettings",
+									"recursive": false,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							}
+						},
+						{
+							"name": "Filter_CSV_Files",
+							"type": "Filter",
+							"dependsOn": [
+								{
+									"activity": "Get_Metadata_Files",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"items": {
+									"value": "@activity('Get_Metadata_Files').output.childItems",
+									"type": "Expression"
+								},
+								"condition": {
+									"value": "@endsWith(toLower(item().name), '.csv')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "If_Files_Exist",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "Filter_CSV_Files",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@greater(length(activity('Filter_CSV_Files').output.value), 0)",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "Log_No_Files_Found",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 2,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "dbo.usp_update_pipeline_run_audit",
+											"storedProcedureParameters": {
+												"run_id": {
+													"value": {
+														"value": "@pipeline().RunId",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"folder_name": {
+													"value": {
+														"value": "@item().folder_path",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"end_time": {
+													"value": {
+														"value": "@utcNow()",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												},
+												"status": {
+													"value": "NoFilesFound",
+													"type": "String"
+												},
+												"files_copied": {
+													"value": "0",
+													"type": "Int32"
+												},
+												"files_skipped": {
+													"value": "0",
+													"type": "Int32"
+												},
+												"files_failed": {
+													"value": "0",
+													"type": "Int32"
+												},
+												"new_watermark": {
+													"value": null,
+													"type": "DateTime"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "ls_sqldb_watermark_dev",
+											"type": "LinkedServiceReference"
+										}
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "Execute_Child_Pipeline",
+										"type": "ExecutePipeline",
+										"dependsOn": [],
+										"policy": {
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"pipeline": {
+												"referenceName": "pl_bronze_copy_dev",
+												"type": "PipelineReference"
+											},
+											"waitOnCompletion": true,
+											"parameters": {
+												"p_folder_name": {
+													"value": "@item().folder_path",
+													"type": "Expression"
+												},
+												"p_child_items": {
+													"value": "@activity('Filter_CSV_Files').output.value",
+													"type": "Expression"
+												},
+												"p_last_modified": {
+													"value": "@activity('Lookup_Watermark').output.firstRow.last_modified",
+													"type": "Expression"
+												},
+												"p_expected_column_count": {
+													"value": "@item().expected_column_count",
+													"type": "Expression"
+												},
+												"p_pipeline_run_id": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												}
+											}
+										}
+									},
+									{
+										"name": "Update_Watermark",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [
+											{
+												"activity": "Execute_Child_Pipeline",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 2,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "dbo.usp_update_watermark",
+											"storedProcedureParameters": {
+												"table_name": {
+													"value": {
+														"value": "@item().folder_path",
+														"type": "Expression"
+													},
+													"type": "String"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "ls_sqldb_watermark_dev",
+											"type": "LinkedServiceReference"
+										}
+									},
+									{
+										"name": "Lookup_Run_Counts",
+										"type": "Lookup",
+										"dependsOn": [
+											{
+												"activity": "Update_Watermark",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 2,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzureSqlSource",
+												"sqlReaderStoredProcedureName": "dbo.usp_get_run_counts",
+												"storedProcedureParameters": {
+													"run_id": {
+														"type": "String",
+														"value": {
+															"value": "@pipeline().RunId",
+															"type": "Expression"
+														}
+													},
+													"table_name": {
+														"type": "String",
+														"value": {
+															"value": "@item().folder_path",
+															"type": "Expression"
+														}
+													}
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"dataset": {
+												"referenceName": "ds_sqldb_dev",
+												"type": "DatasetReference"
+											},
+											"firstRowOnly": true
+										}
+									},
+									{
+										"name": "Lookup_New_Watermark",
+										"type": "Lookup",
+										"dependsOn": [
+											{
+												"activity": "Lookup_Run_Counts",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 2,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzureSqlSource",
+												"sqlReaderStoredProcedureName": "dbo.usp_get_watermark",
+												"storedProcedureParameters": {
+													"table_name": {
+														"type": "String",
+														"value": {
+															"value": "@item().folder_path",
+															"type": "Expression"
+														}
+													}
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"dataset": {
+												"referenceName": "ds_sqldb_dev",
+												"type": "DatasetReference"
+											},
+											"firstRowOnly": true
+										}
+									},
+									{
+										"name": "Log_Folder_Success",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [
+											{
+												"activity": "Lookup_New_Watermark",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 2,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "dbo.usp_update_pipeline_run_audit",
+											"storedProcedureParameters": {
+												"run_id": {
+													"value": {
+														"value": "@pipeline().RunId",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"folder_name": {
+													"value": {
+														"value": "@item().folder_path",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"end_time": {
+													"value": {
+														"value": "@utcNow()",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												},
+												"status": {
+													"value": "Succeeded",
+													"type": "String"
+												},
+												"files_copied": {
+													"value": {
+														"value": "@activity('Lookup_Run_Counts').output.firstRow.files_copied",
+														"type": "Expression"
+													},
+													"type": "Int32"
+												},
+												"files_skipped": {
+													"value": {
+														"value": "@activity('Lookup_Run_Counts').output.firstRow.files_skipped",
+														"type": "Expression"
+													},
+													"type": "Int32"
+												},
+												"files_failed": {
+													"value": {
+														"value": "@activity('Lookup_Run_Counts').output.firstRow.files_failed",
+														"type": "Expression"
+													},
+													"type": "Int32"
+												},
+												"new_watermark": {
+													"value": {
+														"value": "@activity('Lookup_New_Watermark').output.firstRow.last_modified",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "ls_sqldb_watermark_dev",
+											"type": "LinkedServiceReference"
+										}
+									},
+									{
+										"name": "Log_Folder_Failed",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [
+											{
+												"activity": "Execute_Child_Pipeline",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 2,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "dbo.usp_update_pipeline_run_audit",
+											"storedProcedureParameters": {
+												"run_id": {
+													"value": {
+														"value": "@pipeline().RunId",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"folder_name": {
+													"value": {
+														"value": "@item().folder_path",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"end_time": {
+													"value": {
+														"value": "@utcNow()",
+														"type": "Expression"
+													},
+													"type": "DateTime"
+												},
+												"status": {
+													"value": "Failed",
+													"type": "String"
+												},
+												"files_copied": {
+													"value": "0",
+													"type": "Int32"
+												},
+												"files_skipped": {
+													"value": "0",
+													"type": "Int32"
+												},
+												"files_failed": {
+													"value": {
+														"value": "@length(activity('Filter_CSV_Files').output.value)",
+														"type": "Expression"
+													},
+													"type": "Int32"
+												},
+												"new_watermark": {
+													"value": null,
+													"type": "DateTime"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "ls_sqldb_watermark_dev",
+											"type": "LinkedServiceReference"
+										}
+									},
+									{
+										"name": "Notify_Child_Failure",
+										"type": "WebActivity",
+										"dependsOn": [
+											{
+												"activity": "Log_Folder_Failed",
+												"dependencyConditions": [
+													"Succeeded",
+													"Failed"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 1,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"method": "POST",
+											"url": "https://httpbin.org/post",
+											"body": {
+												"value": "@concat('{\"title\": \"ADF Pipeline Failure\", \"text\": \"Bronze pipeline failed for folder: ', item().folder_path, '. Pipeline: ', pipeline().Pipeline, '. RunId: ', pipeline().RunId, '. Time: ', utcNow(), '\"}')",
+												"type": "Expression"
+											}
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Notify_Pipeline_Failure",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "ForEach_Folder",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "POST",
+					"url": "https://httpbin.org/post",
+					"body": {
+						"value": "@concat('{\"title\": \"ADF Pipeline Failure\", \"text\": \"Bronze ingestion pipeline failed. Pipeline: ', pipeline().Pipeline, '. RunId: ', pipeline().RunId, '. Time: ', utcNow(), '\"}')",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2026-03-30T16:47:30Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

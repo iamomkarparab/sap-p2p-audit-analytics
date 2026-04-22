@@ -1,0 +1,611 @@
+{
+	"name": "ds_src_file_dev",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_filesystem_src_dev",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"p_folder_name": {
+				"type": "string"
+			},
+			"p_file_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "FileServerLocation",
+				"fileName": {
+					"value": "@dataset().p_file_name",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().p_folder_name",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "mandt",
+				"type": "String"
+			},
+			{
+				"name": "ebeln",
+				"type": "String"
+			},
+			{
+				"name": "bukrs",
+				"type": "String"
+			},
+			{
+				"name": "bstyp",
+				"type": "String"
+			},
+			{
+				"name": "bsart",
+				"type": "String"
+			},
+			{
+				"name": "bsakz",
+				"type": "String"
+			},
+			{
+				"name": "loekz",
+				"type": "String"
+			},
+			{
+				"name": "statu",
+				"type": "String"
+			},
+			{
+				"name": "aedat",
+				"type": "String"
+			},
+			{
+				"name": "ernam",
+				"type": "String"
+			},
+			{
+				"name": "pincr",
+				"type": "String"
+			},
+			{
+				"name": "lponr",
+				"type": "String"
+			},
+			{
+				"name": "lifnr",
+				"type": "String"
+			},
+			{
+				"name": "spras",
+				"type": "String"
+			},
+			{
+				"name": "zterm",
+				"type": "String"
+			},
+			{
+				"name": "zbd1t",
+				"type": "String"
+			},
+			{
+				"name": "zbd2t",
+				"type": "String"
+			},
+			{
+				"name": "zbd3t",
+				"type": "String"
+			},
+			{
+				"name": "zbd1p",
+				"type": "String"
+			},
+			{
+				"name": "zbd2p",
+				"type": "String"
+			},
+			{
+				"name": "ekorg",
+				"type": "String"
+			},
+			{
+				"name": "ekgrp",
+				"type": "String"
+			},
+			{
+				"name": "waers",
+				"type": "String"
+			},
+			{
+				"name": "wkurs",
+				"type": "String"
+			},
+			{
+				"name": "kufix",
+				"type": "String"
+			},
+			{
+				"name": "bedat",
+				"type": "String"
+			},
+			{
+				"name": "kdatb",
+				"type": "String"
+			},
+			{
+				"name": "kdate",
+				"type": "String"
+			},
+			{
+				"name": "bwbdt",
+				"type": "String"
+			},
+			{
+				"name": "angdt",
+				"type": "String"
+			},
+			{
+				"name": "bnddt",
+				"type": "String"
+			},
+			{
+				"name": "gwldt",
+				"type": "String"
+			},
+			{
+				"name": "ausnr",
+				"type": "String"
+			},
+			{
+				"name": "angnr",
+				"type": "String"
+			},
+			{
+				"name": "ihran",
+				"type": "String"
+			},
+			{
+				"name": "ihrez",
+				"type": "String"
+			},
+			{
+				"name": "verkf",
+				"type": "String"
+			},
+			{
+				"name": "telf1",
+				"type": "String"
+			},
+			{
+				"name": "llief",
+				"type": "String"
+			},
+			{
+				"name": "kunnr",
+				"type": "String"
+			},
+			{
+				"name": "konnr",
+				"type": "String"
+			},
+			{
+				"name": "abgru",
+				"type": "String"
+			},
+			{
+				"name": "autlf",
+				"type": "String"
+			},
+			{
+				"name": "weakt",
+				"type": "String"
+			},
+			{
+				"name": "reswk",
+				"type": "String"
+			},
+			{
+				"name": "lblif",
+				"type": "String"
+			},
+			{
+				"name": "inco1",
+				"type": "String"
+			},
+			{
+				"name": "inco2",
+				"type": "String"
+			},
+			{
+				"name": "ktwrt",
+				"type": "String"
+			},
+			{
+				"name": "submi",
+				"type": "String"
+			},
+			{
+				"name": "knumv",
+				"type": "String"
+			},
+			{
+				"name": "kalsm",
+				"type": "String"
+			},
+			{
+				"name": "stafo",
+				"type": "String"
+			},
+			{
+				"name": "lifre",
+				"type": "String"
+			},
+			{
+				"name": "exnum",
+				"type": "String"
+			},
+			{
+				"name": "unsez",
+				"type": "String"
+			},
+			{
+				"name": "logsy",
+				"type": "String"
+			},
+			{
+				"name": "upinc",
+				"type": "String"
+			},
+			{
+				"name": "stako",
+				"type": "String"
+			},
+			{
+				"name": "frggr",
+				"type": "String"
+			},
+			{
+				"name": "frgsx",
+				"type": "String"
+			},
+			{
+				"name": "frgke",
+				"type": "String"
+			},
+			{
+				"name": "frgzu",
+				"type": "String"
+			},
+			{
+				"name": "frgrl",
+				"type": "String"
+			},
+			{
+				"name": "lands",
+				"type": "String"
+			},
+			{
+				"name": "lphis",
+				"type": "String"
+			},
+			{
+				"name": "adrnr",
+				"type": "String"
+			},
+			{
+				"name": "stceg_l",
+				"type": "String"
+			},
+			{
+				"name": "stceg",
+				"type": "String"
+			},
+			{
+				"name": "absgr",
+				"type": "String"
+			},
+			{
+				"name": "addnr",
+				"type": "String"
+			},
+			{
+				"name": "kornr",
+				"type": "String"
+			},
+			{
+				"name": "memory",
+				"type": "String"
+			},
+			{
+				"name": "procstat",
+				"type": "String"
+			},
+			{
+				"name": "rlwrt",
+				"type": "String"
+			},
+			{
+				"name": "revno",
+				"type": "String"
+			},
+			{
+				"name": "scmproc",
+				"type": "String"
+			},
+			{
+				"name": "reason_code",
+				"type": "String"
+			},
+			{
+				"name": "memorytype",
+				"type": "String"
+			},
+			{
+				"name": "rettp",
+				"type": "String"
+			},
+			{
+				"name": "retpc",
+				"type": "String"
+			},
+			{
+				"name": "dptyp",
+				"type": "String"
+			},
+			{
+				"name": "dppct",
+				"type": "String"
+			},
+			{
+				"name": "dpamt",
+				"type": "String"
+			},
+			{
+				"name": "dpdat",
+				"type": "String"
+			},
+			{
+				"name": "msr_id",
+				"type": "String"
+			},
+			{
+				"name": "hierarchy_exists",
+				"type": "String"
+			},
+			{
+				"name": "threshold_exists",
+				"type": "String"
+			},
+			{
+				"name": "legal_contract",
+				"type": "String"
+			},
+			{
+				"name": "description",
+				"type": "String"
+			},
+			{
+				"name": "release_date",
+				"type": "String"
+			},
+			{
+				"name": "vsart",
+				"type": "String"
+			},
+			{
+				"name": "handoverloc",
+				"type": "String"
+			},
+			{
+				"name": "shipcond",
+				"type": "String"
+			},
+			{
+				"name": "incov",
+				"type": "String"
+			},
+			{
+				"name": "inco2_l",
+				"type": "String"
+			},
+			{
+				"name": "inco3_l",
+				"type": "String"
+			},
+			{
+				"name": "externalsystem",
+				"type": "String"
+			},
+			{
+				"name": "externalreferenceid",
+				"type": "String"
+			},
+			{
+				"name": "ext_rev_tmstmp",
+				"type": "String"
+			},
+			{
+				"name": "force_id",
+				"type": "String"
+			},
+			{
+				"name": "force_cnt",
+				"type": "String"
+			},
+			{
+				"name": "reloc_id",
+				"type": "String"
+			},
+			{
+				"name": "reloc_seq_id",
+				"type": "String"
+			},
+			{
+				"name": "source_logsys",
+				"type": "String"
+			},
+			{
+				"name": "fsh_transaction",
+				"type": "String"
+			},
+			{
+				"name": "fsh_item_group",
+				"type": "String"
+			},
+			{
+				"name": "fsh_vas_last_item",
+				"type": "String"
+			},
+			{
+				"name": "fsh_os_stg_change",
+				"type": "String"
+			},
+			{
+				"name": "vzskz",
+				"type": "String"
+			},
+			{
+				"name": "fsh_snst_status",
+				"type": "String"
+			},
+			{
+				"name": "pohf_type",
+				"type": "String"
+			},
+			{
+				"name": "eq_eindt",
+				"type": "String"
+			},
+			{
+				"name": "eq_werks",
+				"type": "String"
+			},
+			{
+				"name": "fixpo",
+				"type": "String"
+			},
+			{
+				"name": "ekgrp_allow",
+				"type": "String"
+			},
+			{
+				"name": "werks_allow",
+				"type": "String"
+			},
+			{
+				"name": "contract_allow",
+				"type": "String"
+			},
+			{
+				"name": "pstyp_allow",
+				"type": "String"
+			},
+			{
+				"name": "fixpo_allow",
+				"type": "String"
+			},
+			{
+				"name": "key_id_allow",
+				"type": "String"
+			},
+			{
+				"name": "aurel_allow",
+				"type": "String"
+			},
+			{
+				"name": "delper_allow",
+				"type": "String"
+			},
+			{
+				"name": "eindt_allow",
+				"type": "String"
+			},
+			{
+				"name": "ltsnr_allow",
+				"type": "String"
+			},
+			{
+				"name": "otb_level",
+				"type": "String"
+			},
+			{
+				"name": "otb_cond_type",
+				"type": "String"
+			},
+			{
+				"name": "key_id",
+				"type": "String"
+			},
+			{
+				"name": "otb_value",
+				"type": "String"
+			},
+			{
+				"name": "otb_curr",
+				"type": "String"
+			},
+			{
+				"name": "otb_res_value",
+				"type": "String"
+			},
+			{
+				"name": "otb_spec_value",
+				"type": "String"
+			},
+			{
+				"name": "spr_rsn_profile",
+				"type": "String"
+			},
+			{
+				"name": "budg_type",
+				"type": "String"
+			},
+			{
+				"name": "otb_status",
+				"type": "String"
+			},
+			{
+				"name": "otb_reason",
+				"type": "String"
+			},
+			{
+				"name": "check_type",
+				"type": "String"
+			},
+			{
+				"name": "con_otb_req",
+				"type": "String"
+			},
+			{
+				"name": "con_prebook_lev",
+				"type": "String"
+			},
+			{
+				"name": "con_distr_lev",
+				"type": "String"
+			},
+			{
+				"name": "operation_flag",
+				"type": "String"
+			},
+			{
+				"name": "is_deleted",
+				"type": "String"
+			},
+			{
+				"name": "recordstamp",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

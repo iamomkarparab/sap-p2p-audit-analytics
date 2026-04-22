@@ -1,0 +1,57 @@
+{
+	"name": "pl_gold_dev",
+	"properties": {
+		"activities": [
+			{
+				"name": "Run_PO_Filtered",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/meshailajaparab@outlook.com/nb_gold_po_filtered_dev"
+				},
+				"linkedServiceName": {
+					"referenceName": "ls_databricks_dev",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Run_PTP_Test_1",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Run_PO_Filtered",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/meshailajaparab@outlook.com/nb_gold_ptp_test_1_dev"
+				},
+				"linkedServiceName": {
+					"referenceName": "ls_databricks_dev",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2026-04-12T11:52:05Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
