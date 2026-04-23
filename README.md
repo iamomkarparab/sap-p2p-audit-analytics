@@ -5,9 +5,16 @@ SAP P2P Audit Analytics — End-to-End Azure Data Engineering Pipeline
 ![ADF](https://img.shields.io/badge/ADF-Orchestration-lightblue)
 ![Status](https://img.shields.io/badge/Status-Complete-brightgreen)
 ---
-Project Overview
-An end-to-end Azure Data Engineering pipeline that ingests SAP Procure-to-Pay (P2P) data from on-premises CSV files, processes it through Bronze → Silver → Gold layers, and generates audit analytics for price variance detection.
-This project replicates real-world internal audit analytics performed at major enterprises including Reliance, Adani, and Hindustan Unilever, now automated and scaled on Azure.
+## Project Overview
+
+An end-to-end Azure Data Engineering pipeline that ingests SAP 
+Procure-to-Pay (P2P) data from on-premises CSV files, processes 
+it through Bronze → Silver → Gold layers, and generates analytics 
+for strengthening internal controls of the organisation.
+
+This project automates and scales P2P data processing on Azure, 
+enabling procurement teams to detect anomalies, enforce compliance, 
+and improve financial governance across the organisation.
 ---
 Architecture
 ```
