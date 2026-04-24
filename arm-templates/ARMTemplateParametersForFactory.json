@@ -1,0 +1,42 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "value": "adf-onprem-adls-ingestion-dev"
+        },
+        "ls_adls_bronze_dev_accountKey": {
+            "value": ""
+        },
+        "ls_databricks_dev_accessToken": {
+            "value": ""
+        },
+        "ls_filesystem_src_dev_password": {
+            "value": ""
+        },
+        "ls_sqldb_watermark_dev_password": {
+            "value": ""
+        },
+        "ls_adls_bronze_dev_properties_typeProperties_url": {
+            "value": "https://stsapadlsrawdev.dfs.core.windows.net/"
+        },
+        "ls_databricks_dev_properties_typeProperties_existingClusterId": {
+            "value": "0402-021600-d2fdmzyz"
+        },
+        "ls_filesystem_src_dev_properties_typeProperties_host": {
+            "value": "C:\\Users\\Omkar Parab\\Desktop\\Azure Project\\files"
+        },
+        "ls_filesystem_src_dev_properties_typeProperties_userId": {
+            "value": ".\\omkar parab"
+        },
+        "ls_sqldb_watermark_dev_properties_typeProperties_server": {
+            "value": "sql-p2p-src-dev-01.database.windows.net"
+        },
+        "ls_sqldb_watermark_dev_properties_typeProperties_database": {
+            "value": "sqldb-p2p-free-dev"
+        },
+        "ls_sqldb_watermark_dev_properties_typeProperties_userName": {
+            "value": "sqladmin_p2p"
+        }
+    }
+}
