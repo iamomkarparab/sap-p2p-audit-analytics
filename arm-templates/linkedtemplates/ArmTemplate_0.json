@@ -1,0 +1,2277 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "adf-onprem-adls-ingestion-dev"
+        },
+        "ls_adls_bronze_dev_accountKey": {
+            "type": "secureString",
+            "metadata": "Secure string for 'accountKey' of 'ls_adls_bronze_dev'"
+        },
+        "ls_databricks_dev_accessToken": {
+            "type": "secureString",
+            "metadata": "Secure string for 'accessToken' of 'ls_databricks_dev'"
+        },
+        "ls_sqldb_watermark_dev_password": {
+            "type": "secureString",
+            "metadata": "Secure string for 'password' of 'ls_sqldb_watermark_dev'"
+        },
+        "ls_filesystem_src_dev_password": {
+            "type": "secureString",
+            "metadata": "Secure string for 'password' of 'ls_filesystem_src_dev'"
+        },
+        "ls_adls_bronze_dev_properties_typeProperties_url": {
+            "type": "string",
+            "defaultValue": "https://stsapadlsrawdev.dfs.core.windows.net/"
+        },
+        "ls_databricks_dev_properties_typeProperties_existingClusterId": {
+            "type": "string",
+            "defaultValue": "0402-021600-d2fdmzyz"
+        },
+        "ls_sqldb_watermark_dev_properties_typeProperties_server": {
+            "type": "string",
+            "defaultValue": "sql-p2p-src-dev-01.database.windows.net"
+        },
+        "ls_sqldb_watermark_dev_properties_typeProperties_database": {
+            "type": "string",
+            "defaultValue": "sqldb-p2p-free-dev"
+        },
+        "ls_sqldb_watermark_dev_properties_typeProperties_userName": {
+            "type": "string",
+            "defaultValue": "sqladmin_p2p"
+        },
+        "ls_filesystem_src_dev_properties_typeProperties_host": {
+            "type": "string",
+            "defaultValue": "C:\\Users\\Omkar Parab\\Desktop\\Azure Project\\files"
+        },
+        "ls_filesystem_src_dev_properties_typeProperties_userId": {
+            "type": "string",
+            "defaultValue": ".\\omkar parab"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/ls_adls_bronze_dev')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobFS",
+                "typeProperties": {
+                    "url": "[parameters('ls_adls_bronze_dev_properties_typeProperties_url')]",
+                    "accountKey": {
+                        "type": "SecureString",
+                        "value": "[parameters('ls_adls_bronze_dev_accountKey')]"
+                    }
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ls_databricks_dev')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureDatabricks",
+                "typeProperties": {
+                    "domain": "https://adb-7405613268541476.16.azuredatabricks.net",
+                    "accessToken": {
+                        "type": "SecureString",
+                        "value": "[parameters('ls_databricks_dev_accessToken')]"
+                    },
+                    "existingClusterId": "[parameters('ls_databricks_dev_properties_typeProperties_existingClusterId')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ls_sqldb_watermark_dev')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureSqlDatabase",
+                "typeProperties": {
+                    "server": "[parameters('ls_sqldb_watermark_dev_properties_typeProperties_server')]",
+                    "database": "[parameters('ls_sqldb_watermark_dev_properties_typeProperties_database')]",
+                    "encrypt": "mandatory",
+                    "trustServerCertificate": false,
+                    "authenticationType": "SQL",
+                    "userName": "[parameters('ls_sqldb_watermark_dev_properties_typeProperties_userName')]",
+                    "password": {
+                        "type": "SecureString",
+                        "value": "[parameters('ls_sqldb_watermark_dev_password')]"
+                    }
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/IR-SHIR-ONPREM-ADLSDEV')]",
+            "type": "Microsoft.DataFactory/factories/integrationRuntimes",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "SelfHosted",
+                "typeProperties": {}
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/pl_gold_dev')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Run_PO_Filtered",
+                        "type": "DatabricksNotebook",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "notebookPath": "/Users/meshailajaparab@outlook.com/nb_gold_po_filtered_dev"
+                        },
+                        "linkedServiceName": {
+                            "referenceName": "ls_databricks_dev",
+                            "type": "LinkedServiceReference"
+                        }
+                    },
+                    {
+                        "name": "Run_PTP_Test_1",
+                        "type": "DatabricksNotebook",
+                        "dependsOn": [
+                            {
+                                "activity": "Run_PO_Filtered",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "notebookPath": "/Users/meshailajaparab@outlook.com/nb_gold_ptp_test_1_dev"
+                        },
+                        "linkedServiceName": {
+                            "referenceName": "ls_databricks_dev",
+                            "type": "LinkedServiceReference"
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2026-04-12T11:52:05Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/ls_databricks_dev')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/pl_silver_dev')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Run_Silver_PO_Report",
+                        "type": "DatabricksNotebook",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "notebookPath": "/Users/meshailajaparab@outlook.com/nb_silver_transform_dev"
+                        },
+                        "linkedServiceName": {
+                            "referenceName": "ls_databricks_dev",
+                            "type": "LinkedServiceReference"
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2026-04-07T02:01:10Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/ls_databricks_dev')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ds_sink_adls_bronze_dev')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "ls_adls_bronze_dev",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "p_folder_name": {
+                        "type": "string"
+                    },
+                    "p_year": {
+                        "type": "string"
+                    },
+                    "p_month": {
+                        "type": "string"
+                    },
+                    "p_file_name": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileName": {
+                            "value": "@dataset().p_file_name",
+                            "type": "Expression"
+                        },
+                        "folderPath": {
+                            "value": "@{dataset().p_folder_name}/year=@{dataset().p_year}/month=@{dataset().p_month}",
+                            "type": "Expression"
+                        },
+                        "fileSystem": "bronze"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/ls_adls_bronze_dev')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ds_sqldb_dev')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "ls_sqldb_watermark_dev",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [],
+                "typeProperties": {}
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/ls_sqldb_watermark_dev')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ls_filesystem_src_dev')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "FileServer",
+                "typeProperties": {
+                    "host": "[parameters('ls_filesystem_src_dev_properties_typeProperties_host')]",
+                    "userId": "[parameters('ls_filesystem_src_dev_properties_typeProperties_userId')]",
+                    "password": {
+                        "type": "SecureString",
+                        "value": "[parameters('ls_filesystem_src_dev_password')]"
+                    }
+                },
+                "connectVia": {
+                    "referenceName": "IR-SHIR-ONPREM-ADLSDEV",
+                    "type": "IntegrationRuntimeReference"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/integrationRuntimes/IR-SHIR-ONPREM-ADLSDEV')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ds_src_file_dev')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "ls_filesystem_src_dev",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "p_folder_name": {
+                        "type": "string"
+                    },
+                    "p_file_name": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "FileServerLocation",
+                        "fileName": {
+                            "value": "@dataset().p_file_name",
+                            "type": "Expression"
+                        },
+                        "folderPath": {
+                            "value": "@dataset().p_folder_name",
+                            "type": "Expression"
+                        }
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "name": "mandt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ebeln",
+                        "type": "String"
+                    },
+                    {
+                        "name": "bukrs",
+                        "type": "String"
+                    },
+                    {
+                        "name": "bstyp",
+                        "type": "String"
+                    },
+                    {
+                        "name": "bsart",
+                        "type": "String"
+                    },
+                    {
+                        "name": "bsakz",
+                        "type": "String"
+                    },
+                    {
+                        "name": "loekz",
+                        "type": "String"
+                    },
+                    {
+                        "name": "statu",
+                        "type": "String"
+                    },
+                    {
+                        "name": "aedat",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ernam",
+                        "type": "String"
+                    },
+                    {
+                        "name": "pincr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "lponr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "lifnr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "spras",
+                        "type": "String"
+                    },
+                    {
+                        "name": "zterm",
+                        "type": "String"
+                    },
+                    {
+                        "name": "zbd1t",
+                        "type": "String"
+                    },
+                    {
+                        "name": "zbd2t",
+                        "type": "String"
+                    },
+                    {
+                        "name": "zbd3t",
+                        "type": "String"
+                    },
+                    {
+                        "name": "zbd1p",
+                        "type": "String"
+                    },
+                    {
+                        "name": "zbd2p",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ekorg",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ekgrp",
+                        "type": "String"
+                    },
+                    {
+                        "name": "waers",
+                        "type": "String"
+                    },
+                    {
+                        "name": "wkurs",
+                        "type": "String"
+                    },
+                    {
+                        "name": "kufix",
+                        "type": "String"
+                    },
+                    {
+                        "name": "bedat",
+                        "type": "String"
+                    },
+                    {
+                        "name": "kdatb",
+                        "type": "String"
+                    },
+                    {
+                        "name": "kdate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "bwbdt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "angdt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "bnddt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "gwldt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ausnr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "angnr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ihran",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ihrez",
+                        "type": "String"
+                    },
+                    {
+                        "name": "verkf",
+                        "type": "String"
+                    },
+                    {
+                        "name": "telf1",
+                        "type": "String"
+                    },
+                    {
+                        "name": "llief",
+                        "type": "String"
+                    },
+                    {
+                        "name": "kunnr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "konnr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "abgru",
+                        "type": "String"
+                    },
+                    {
+                        "name": "autlf",
+                        "type": "String"
+                    },
+                    {
+                        "name": "weakt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "reswk",
+                        "type": "String"
+                    },
+                    {
+                        "name": "lblif",
+                        "type": "String"
+                    },
+                    {
+                        "name": "inco1",
+                        "type": "String"
+                    },
+                    {
+                        "name": "inco2",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ktwrt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "submi",
+                        "type": "String"
+                    },
+                    {
+                        "name": "knumv",
+                        "type": "String"
+                    },
+                    {
+                        "name": "kalsm",
+                        "type": "String"
+                    },
+                    {
+                        "name": "stafo",
+                        "type": "String"
+                    },
+                    {
+                        "name": "lifre",
+                        "type": "String"
+                    },
+                    {
+                        "name": "exnum",
+                        "type": "String"
+                    },
+                    {
+                        "name": "unsez",
+                        "type": "String"
+                    },
+                    {
+                        "name": "logsy",
+                        "type": "String"
+                    },
+                    {
+                        "name": "upinc",
+                        "type": "String"
+                    },
+                    {
+                        "name": "stako",
+                        "type": "String"
+                    },
+                    {
+                        "name": "frggr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "frgsx",
+                        "type": "String"
+                    },
+                    {
+                        "name": "frgke",
+                        "type": "String"
+                    },
+                    {
+                        "name": "frgzu",
+                        "type": "String"
+                    },
+                    {
+                        "name": "frgrl",
+                        "type": "String"
+                    },
+                    {
+                        "name": "lands",
+                        "type": "String"
+                    },
+                    {
+                        "name": "lphis",
+                        "type": "String"
+                    },
+                    {
+                        "name": "adrnr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "stceg_l",
+                        "type": "String"
+                    },
+                    {
+                        "name": "stceg",
+                        "type": "String"
+                    },
+                    {
+                        "name": "absgr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "addnr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "kornr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "memory",
+                        "type": "String"
+                    },
+                    {
+                        "name": "procstat",
+                        "type": "String"
+                    },
+                    {
+                        "name": "rlwrt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "revno",
+                        "type": "String"
+                    },
+                    {
+                        "name": "scmproc",
+                        "type": "String"
+                    },
+                    {
+                        "name": "reason_code",
+                        "type": "String"
+                    },
+                    {
+                        "name": "memorytype",
+                        "type": "String"
+                    },
+                    {
+                        "name": "rettp",
+                        "type": "String"
+                    },
+                    {
+                        "name": "retpc",
+                        "type": "String"
+                    },
+                    {
+                        "name": "dptyp",
+                        "type": "String"
+                    },
+                    {
+                        "name": "dppct",
+                        "type": "String"
+                    },
+                    {
+                        "name": "dpamt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "dpdat",
+                        "type": "String"
+                    },
+                    {
+                        "name": "msr_id",
+                        "type": "String"
+                    },
+                    {
+                        "name": "hierarchy_exists",
+                        "type": "String"
+                    },
+                    {
+                        "name": "threshold_exists",
+                        "type": "String"
+                    },
+                    {
+                        "name": "legal_contract",
+                        "type": "String"
+                    },
+                    {
+                        "name": "description",
+                        "type": "String"
+                    },
+                    {
+                        "name": "release_date",
+                        "type": "String"
+                    },
+                    {
+                        "name": "vsart",
+                        "type": "String"
+                    },
+                    {
+                        "name": "handoverloc",
+                        "type": "String"
+                    },
+                    {
+                        "name": "shipcond",
+                        "type": "String"
+                    },
+                    {
+                        "name": "incov",
+                        "type": "String"
+                    },
+                    {
+                        "name": "inco2_l",
+                        "type": "String"
+                    },
+                    {
+                        "name": "inco3_l",
+                        "type": "String"
+                    },
+                    {
+                        "name": "externalsystem",
+                        "type": "String"
+                    },
+                    {
+                        "name": "externalreferenceid",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ext_rev_tmstmp",
+                        "type": "String"
+                    },
+                    {
+                        "name": "force_id",
+                        "type": "String"
+                    },
+                    {
+                        "name": "force_cnt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "reloc_id",
+                        "type": "String"
+                    },
+                    {
+                        "name": "reloc_seq_id",
+                        "type": "String"
+                    },
+                    {
+                        "name": "source_logsys",
+                        "type": "String"
+                    },
+                    {
+                        "name": "fsh_transaction",
+                        "type": "String"
+                    },
+                    {
+                        "name": "fsh_item_group",
+                        "type": "String"
+                    },
+                    {
+                        "name": "fsh_vas_last_item",
+                        "type": "String"
+                    },
+                    {
+                        "name": "fsh_os_stg_change",
+                        "type": "String"
+                    },
+                    {
+                        "name": "vzskz",
+                        "type": "String"
+                    },
+                    {
+                        "name": "fsh_snst_status",
+                        "type": "String"
+                    },
+                    {
+                        "name": "pohf_type",
+                        "type": "String"
+                    },
+                    {
+                        "name": "eq_eindt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "eq_werks",
+                        "type": "String"
+                    },
+                    {
+                        "name": "fixpo",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ekgrp_allow",
+                        "type": "String"
+                    },
+                    {
+                        "name": "werks_allow",
+                        "type": "String"
+                    },
+                    {
+                        "name": "contract_allow",
+                        "type": "String"
+                    },
+                    {
+                        "name": "pstyp_allow",
+                        "type": "String"
+                    },
+                    {
+                        "name": "fixpo_allow",
+                        "type": "String"
+                    },
+                    {
+                        "name": "key_id_allow",
+                        "type": "String"
+                    },
+                    {
+                        "name": "aurel_allow",
+                        "type": "String"
+                    },
+                    {
+                        "name": "delper_allow",
+                        "type": "String"
+                    },
+                    {
+                        "name": "eindt_allow",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ltsnr_allow",
+                        "type": "String"
+                    },
+                    {
+                        "name": "otb_level",
+                        "type": "String"
+                    },
+                    {
+                        "name": "otb_cond_type",
+                        "type": "String"
+                    },
+                    {
+                        "name": "key_id",
+                        "type": "String"
+                    },
+                    {
+                        "name": "otb_value",
+                        "type": "String"
+                    },
+                    {
+                        "name": "otb_curr",
+                        "type": "String"
+                    },
+                    {
+                        "name": "otb_res_value",
+                        "type": "String"
+                    },
+                    {
+                        "name": "otb_spec_value",
+                        "type": "String"
+                    },
+                    {
+                        "name": "spr_rsn_profile",
+                        "type": "String"
+                    },
+                    {
+                        "name": "budg_type",
+                        "type": "String"
+                    },
+                    {
+                        "name": "otb_status",
+                        "type": "String"
+                    },
+                    {
+                        "name": "otb_reason",
+                        "type": "String"
+                    },
+                    {
+                        "name": "check_type",
+                        "type": "String"
+                    },
+                    {
+                        "name": "con_otb_req",
+                        "type": "String"
+                    },
+                    {
+                        "name": "con_prebook_lev",
+                        "type": "String"
+                    },
+                    {
+                        "name": "con_distr_lev",
+                        "type": "String"
+                    },
+                    {
+                        "name": "operation_flag",
+                        "type": "String"
+                    },
+                    {
+                        "name": "is_deleted",
+                        "type": "String"
+                    },
+                    {
+                        "name": "recordstamp",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/ls_filesystem_src_dev')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/pl_bronze_copy_dev')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "ForEach_File",
+                        "type": "ForEach",
+                        "dependsOn": [],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@pipeline().parameters.p_child_items",
+                                "type": "Expression"
+                            },
+                            "isSequential": false,
+                            "batchCount": 4,
+                            "activities": [
+                                {
+                                    "name": "Get_File_Metadata",
+                                    "type": "GetMetadata",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "0.00:30:00",
+                                        "retry": 3,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "dataset": {
+                                            "referenceName": "ds_src_file_dev",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "p_folder_name": "@pipeline().parameters.p_folder_name",
+                                                "p_file_name": "@item().name"
+                                            }
+                                        },
+                                        "fieldList": [
+                                            "lastModified",
+                                            "size",
+                                            "columnCount"
+                                        ],
+                                        "storeSettings": {
+                                            "type": "FileServerReadSettings",
+                                            "recursive": false,
+                                            "enablePartitionDiscovery": false
+                                        },
+                                        "formatSettings": {
+                                            "type": "DelimitedTextReadSettings"
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "If_Valid_File",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Get_File_Metadata",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@and(and(and(greater(length(item().name), 10), endsWith(toLower(item().name), '.csv')), equals(activity('Get_File_Metadata').output.columnCount, pipeline().parameters.p_expected_column_count)), greater(activity('Get_File_Metadata').output.size, 0))",
+                                            "type": "Expression"
+                                        },
+                                        "ifFalseActivities": [
+                                            {
+                                                "name": "Log_Invalid",
+                                                "type": "SqlServerStoredProcedure",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "0.00:10:00",
+                                                    "retry": 2,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "storedProcedureName": "dbo.usp_insert_file_tracking",
+                                                    "storedProcedureParameters": {
+                                                        "pipeline_run_id": {
+                                                            "value": {
+                                                                "value": "@pipeline().parameters.p_pipeline_run_id",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "table_name": {
+                                                            "value": {
+                                                                "value": "@pipeline().parameters.p_folder_name",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "file_name": {
+                                                            "value": {
+                                                                "value": "@item().name",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "last_modified": {
+                                                            "value": {
+                                                                "value": "@activity('Get_File_Metadata').output.lastModified",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        },
+                                                        "status": {
+                                                            "value": {
+                                                                "value": "@if(equals(activity('Get_File_Metadata').output.size, 0), 'EmptyFile', if(and(greater(length(item().name), 10), endsWith(toLower(item().name), '.csv')), 'SchemaInvalid', 'InvalidFilename'))",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "load_time": {
+                                                            "value": {
+                                                                "value": "@utcNow()",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        },
+                                                        "file_size_bytes": {
+                                                            "value": {
+                                                                "value": "@activity('Get_File_Metadata').output.size",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "Int64"
+                                                        },
+                                                        "rows_copied": {
+                                                            "value": "0",
+                                                            "type": "Int32"
+                                                        },
+                                                        "error_message": {
+                                                            "value": {
+                                                                "value": "@if(equals(activity('Get_File_Metadata').output.size, 0), 'File is empty', if(and(greater(length(item().name), 10), endsWith(toLower(item().name), '.csv')), concat('Schema invalid: expected ', string(pipeline().parameters.p_expected_column_count), ' columns but found ', string(activity('Get_File_Metadata').output.columnCount)), 'Invalid filename format'))",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        }
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "ls_sqldb_watermark_dev",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "name": "If_New_File",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "If_Valid_File",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@and(and(and(and(greater(length(item().name), 10), endsWith(toLower(item().name), '.csv')), equals(activity('Get_File_Metadata').output.columnCount, pipeline().parameters.p_expected_column_count)), greater(activity('Get_File_Metadata').output.size, 0)), greater(activity('Get_File_Metadata').output.lastModified, pipeline().parameters.p_last_modified))",
+                                            "type": "Expression"
+                                        },
+                                        "ifFalseActivities": [
+                                            {
+                                                "name": "Log_Skipped",
+                                                "type": "SqlServerStoredProcedure",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "0.00:10:00",
+                                                    "retry": 2,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "storedProcedureName": "dbo.usp_insert_file_tracking",
+                                                    "storedProcedureParameters": {
+                                                        "pipeline_run_id": {
+                                                            "value": {
+                                                                "value": "@pipeline().parameters.p_pipeline_run_id",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "table_name": {
+                                                            "value": {
+                                                                "value": "@pipeline().parameters.p_folder_name",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "file_name": {
+                                                            "value": {
+                                                                "value": "@item().name",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "last_modified": {
+                                                            "value": {
+                                                                "value": "@activity('Get_File_Metadata').output.lastModified",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        },
+                                                        "status": {
+                                                            "value": "Skipped",
+                                                            "type": "String"
+                                                        },
+                                                        "load_time": {
+                                                            "value": {
+                                                                "value": "@utcNow()",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        },
+                                                        "file_size_bytes": {
+                                                            "value": {
+                                                                "value": "@activity('Get_File_Metadata').output.size",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "Int64"
+                                                        },
+                                                        "rows_copied": {
+                                                            "value": "0",
+                                                            "type": "Int32"
+                                                        },
+                                                        "error_message": {
+                                                            "value": null,
+                                                            "type": "String"
+                                                        }
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "ls_sqldb_watermark_dev",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ],
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "Copy_File_To_Bronze",
+                                                "type": "Copy",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "0.12:00:00",
+                                                    "retry": 3,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "source": {
+                                                        "type": "DelimitedTextSource",
+                                                        "storeSettings": {
+                                                            "type": "FileServerReadSettings",
+                                                            "recursive": false,
+                                                            "enablePartitionDiscovery": false
+                                                        },
+                                                        "formatSettings": {
+                                                            "type": "DelimitedTextReadSettings"
+                                                        }
+                                                    },
+                                                    "sink": {
+                                                        "type": "DelimitedTextSink",
+                                                        "storeSettings": {
+                                                            "type": "AzureBlobFSWriteSettings",
+                                                            "copyBehavior": "PreserveHierarchy"
+                                                        },
+                                                        "formatSettings": {
+                                                            "type": "DelimitedTextWriteSettings",
+                                                            "quoteAllText": true,
+                                                            "fileExtension": ".csv"
+                                                        }
+                                                    },
+                                                    "enableStaging": false
+                                                },
+                                                "inputs": [
+                                                    {
+                                                        "referenceName": "ds_src_file_dev",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {
+                                                            "p_folder_name": "@pipeline().parameters.p_folder_name",
+                                                            "p_file_name": "@item().name"
+                                                        }
+                                                    }
+                                                ],
+                                                "outputs": [
+                                                    {
+                                                        "referenceName": "ds_sink_adls_bronze_dev",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {
+                                                            "p_folder_name": "@pipeline().parameters.p_folder_name",
+                                                            "p_year": "@substring(substring(item().name, 0, sub(length(item().name), 4)), sub(length(substring(item().name, 0, sub(length(item().name), 4))), 10), 4)",
+                                                            "p_month": "@substring(substring(item().name, 0, sub(length(item().name), 4)), add(sub(length(substring(item().name, 0, sub(length(item().name), 4))), 10), 5), 2)",
+                                                            "p_file_name": "@item().name"
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "name": "Log_Success",
+                                                "type": "SqlServerStoredProcedure",
+                                                "dependsOn": [
+                                                    {
+                                                        "activity": "Copy_File_To_Bronze",
+                                                        "dependencyConditions": [
+                                                            "Succeeded"
+                                                        ]
+                                                    }
+                                                ],
+                                                "policy": {
+                                                    "timeout": "0.00:10:00",
+                                                    "retry": 2,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "storedProcedureName": "dbo.usp_insert_file_tracking",
+                                                    "storedProcedureParameters": {
+                                                        "pipeline_run_id": {
+                                                            "value": {
+                                                                "value": "@pipeline().parameters.p_pipeline_run_id",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "table_name": {
+                                                            "value": {
+                                                                "value": "@pipeline().parameters.p_folder_name",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "file_name": {
+                                                            "value": {
+                                                                "value": "@item().name",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "last_modified": {
+                                                            "value": {
+                                                                "value": "@activity('Get_File_Metadata').output.lastModified",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        },
+                                                        "status": {
+                                                            "value": "Success",
+                                                            "type": "String"
+                                                        },
+                                                        "load_time": {
+                                                            "value": {
+                                                                "value": "@utcNow()",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        },
+                                                        "file_size_bytes": {
+                                                            "value": {
+                                                                "value": "@activity('Get_File_Metadata').output.size",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "Int64"
+                                                        },
+                                                        "rows_copied": {
+                                                            "value": {
+                                                                "value": "@activity('Copy_File_To_Bronze').output.filesWritten",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "Int32"
+                                                        },
+                                                        "error_message": {
+                                                            "value": null,
+                                                            "type": "String"
+                                                        }
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "ls_sqldb_watermark_dev",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            },
+                                            {
+                                                "name": "Log_Copy_Failed",
+                                                "type": "SqlServerStoredProcedure",
+                                                "dependsOn": [
+                                                    {
+                                                        "activity": "Copy_File_To_Bronze",
+                                                        "dependencyConditions": [
+                                                            "Failed"
+                                                        ]
+                                                    }
+                                                ],
+                                                "policy": {
+                                                    "timeout": "0.00:10:00",
+                                                    "retry": 2,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "storedProcedureName": "dbo.usp_insert_file_tracking",
+                                                    "storedProcedureParameters": {
+                                                        "pipeline_run_id": {
+                                                            "value": {
+                                                                "value": "@pipeline().parameters.p_pipeline_run_id",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "table_name": {
+                                                            "value": {
+                                                                "value": "@pipeline().parameters.p_folder_name",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "file_name": {
+                                                            "value": {
+                                                                "value": "@item().name",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "last_modified": {
+                                                            "value": {
+                                                                "value": "@activity('Get_File_Metadata').output.lastModified",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        },
+                                                        "status": {
+                                                            "value": "Failed",
+                                                            "type": "String"
+                                                        },
+                                                        "load_time": {
+                                                            "value": {
+                                                                "value": "@utcNow()",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        },
+                                                        "file_size_bytes": {
+                                                            "value": {
+                                                                "value": "@activity('Get_File_Metadata').output.size",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "Int64"
+                                                        },
+                                                        "rows_copied": {
+                                                            "value": "0",
+                                                            "type": "Int32"
+                                                        },
+                                                        "error_message": {
+                                                            "value": {
+                                                                "value": "@activity('Copy_File_To_Bronze').error.message",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        }
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "ls_sqldb_watermark_dev",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "parameters": {
+                    "p_folder_name": {
+                        "type": "string"
+                    },
+                    "p_child_items": {
+                        "type": "array"
+                    },
+                    "p_last_modified": {
+                        "type": "string"
+                    },
+                    "p_expected_column_count": {
+                        "type": "int"
+                    },
+                    "p_pipeline_run_id": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "lastPublishTime": "2026-03-30T16:29:08Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/ds_src_file_dev')]",
+                "[concat(variables('factoryId'), '/linkedServices/ls_sqldb_watermark_dev')]",
+                "[concat(variables('factoryId'), '/datasets/ds_sink_adls_bronze_dev')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/pl_bronze_ingest_dev')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Lookup_TableConfig",
+                        "type": "Lookup",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.00:30:00",
+                            "retry": 2,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "AzureSqlSource",
+                                "sqlReaderQuery": "SELECT folder_path, expected_column_count, expected_file_extension FROM dbo.table_config WHERE is_active = 1",
+                                "queryTimeout": "02:00:00",
+                                "partitionOption": "None"
+                            },
+                            "dataset": {
+                                "referenceName": "ds_sqldb_dev",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            },
+                            "firstRowOnly": false
+                        }
+                    },
+                    {
+                        "name": "ForEach_Folder",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "Lookup_TableConfig",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('Lookup_TableConfig').output.value",
+                                "type": "Expression"
+                            },
+                            "isSequential": false,
+                            "batchCount": 2,
+                            "activities": [
+                                {
+                                    "name": "Log_Folder_Start",
+                                    "type": "SqlServerStoredProcedure",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "0.00:10:00",
+                                        "retry": 2,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "storedProcedureName": "dbo.usp_insert_pipeline_run_audit",
+                                        "storedProcedureParameters": {
+                                            "run_id": {
+                                                "value": {
+                                                    "value": "@pipeline().RunId",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            },
+                                            "pipeline_name": {
+                                                "value": {
+                                                    "value": "@pipeline().Pipeline",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            },
+                                            "folder_name": {
+                                                "value": {
+                                                    "value": "@item().folder_path",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            },
+                                            "start_time": {
+                                                "value": {
+                                                    "value": "@utcNow()",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "DateTime"
+                                            },
+                                            "status": {
+                                                "value": "Started",
+                                                "type": "String"
+                                            }
+                                        }
+                                    },
+                                    "linkedServiceName": {
+                                        "referenceName": "ls_sqldb_watermark_dev",
+                                        "type": "LinkedServiceReference"
+                                    }
+                                },
+                                {
+                                    "name": "Lookup_Watermark",
+                                    "type": "Lookup",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Log_Folder_Start",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "0.00:30:00",
+                                        "retry": 2,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "AzureSqlSource",
+                                            "sqlReaderStoredProcedureName": "dbo.usp_get_watermark",
+                                            "storedProcedureParameters": {
+                                                "table_name": {
+                                                    "type": "String",
+                                                    "value": {
+                                                        "value": "@item().folder_path",
+                                                        "type": "Expression"
+                                                    }
+                                                }
+                                            },
+                                            "queryTimeout": "02:00:00",
+                                            "partitionOption": "None"
+                                        },
+                                        "dataset": {
+                                            "referenceName": "ds_sqldb_dev",
+                                            "type": "DatasetReference",
+                                            "parameters": {}
+                                        },
+                                        "firstRowOnly": true
+                                    }
+                                },
+                                {
+                                    "name": "Get_Metadata_Files",
+                                    "type": "GetMetadata",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Lookup_Watermark",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "0.02:00:00",
+                                        "retry": 2,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "dataset": {
+                                            "referenceName": "ds_src_file_dev",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "p_folder_name": "@item().folder_path",
+                                                "p_file_name": "*"
+                                            }
+                                        },
+                                        "fieldList": [
+                                            "childItems"
+                                        ],
+                                        "storeSettings": {
+                                            "type": "FileServerReadSettings",
+                                            "recursive": false,
+                                            "enablePartitionDiscovery": false
+                                        },
+                                        "formatSettings": {
+                                            "type": "DelimitedTextReadSettings"
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "Filter_CSV_Files",
+                                    "type": "Filter",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Get_Metadata_Files",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "items": {
+                                            "value": "@activity('Get_Metadata_Files').output.childItems",
+                                            "type": "Expression"
+                                        },
+                                        "condition": {
+                                            "value": "@endsWith(toLower(item().name), '.csv')",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "If_Files_Exist",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Filter_CSV_Files",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@greater(length(activity('Filter_CSV_Files').output.value), 0)",
+                                            "type": "Expression"
+                                        },
+                                        "ifFalseActivities": [
+                                            {
+                                                "name": "Log_No_Files_Found",
+                                                "type": "SqlServerStoredProcedure",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "0.00:10:00",
+                                                    "retry": 2,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "storedProcedureName": "dbo.usp_update_pipeline_run_audit",
+                                                    "storedProcedureParameters": {
+                                                        "run_id": {
+                                                            "value": {
+                                                                "value": "@pipeline().RunId",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "folder_name": {
+                                                            "value": {
+                                                                "value": "@item().folder_path",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "end_time": {
+                                                            "value": {
+                                                                "value": "@utcNow()",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        },
+                                                        "status": {
+                                                            "value": "NoFilesFound",
+                                                            "type": "String"
+                                                        },
+                                                        "files_copied": {
+                                                            "value": "0",
+                                                            "type": "Int32"
+                                                        },
+                                                        "files_skipped": {
+                                                            "value": "0",
+                                                            "type": "Int32"
+                                                        },
+                                                        "files_failed": {
+                                                            "value": "0",
+                                                            "type": "Int32"
+                                                        },
+                                                        "new_watermark": {
+                                                            "value": null,
+                                                            "type": "DateTime"
+                                                        }
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "ls_sqldb_watermark_dev",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ],
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "Execute_Child_Pipeline",
+                                                "type": "ExecutePipeline",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "pipeline": {
+                                                        "referenceName": "pl_bronze_copy_dev",
+                                                        "type": "PipelineReference"
+                                                    },
+                                                    "waitOnCompletion": true,
+                                                    "parameters": {
+                                                        "p_folder_name": {
+                                                            "value": "@item().folder_path",
+                                                            "type": "Expression"
+                                                        },
+                                                        "p_child_items": {
+                                                            "value": "@activity('Filter_CSV_Files').output.value",
+                                                            "type": "Expression"
+                                                        },
+                                                        "p_last_modified": {
+                                                            "value": "@activity('Lookup_Watermark').output.firstRow.last_modified",
+                                                            "type": "Expression"
+                                                        },
+                                                        "p_expected_column_count": {
+                                                            "value": "@item().expected_column_count",
+                                                            "type": "Expression"
+                                                        },
+                                                        "p_pipeline_run_id": {
+                                                            "value": "@pipeline().RunId",
+                                                            "type": "Expression"
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "name": "Update_Watermark",
+                                                "type": "SqlServerStoredProcedure",
+                                                "dependsOn": [
+                                                    {
+                                                        "activity": "Execute_Child_Pipeline",
+                                                        "dependencyConditions": [
+                                                            "Succeeded"
+                                                        ]
+                                                    }
+                                                ],
+                                                "policy": {
+                                                    "timeout": "0.00:10:00",
+                                                    "retry": 2,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "storedProcedureName": "dbo.usp_update_watermark",
+                                                    "storedProcedureParameters": {
+                                                        "table_name": {
+                                                            "value": {
+                                                                "value": "@item().folder_path",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        }
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "ls_sqldb_watermark_dev",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            },
+                                            {
+                                                "name": "Lookup_Run_Counts",
+                                                "type": "Lookup",
+                                                "dependsOn": [
+                                                    {
+                                                        "activity": "Update_Watermark",
+                                                        "dependencyConditions": [
+                                                            "Succeeded"
+                                                        ]
+                                                    }
+                                                ],
+                                                "policy": {
+                                                    "timeout": "0.00:10:00",
+                                                    "retry": 2,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "source": {
+                                                        "type": "AzureSqlSource",
+                                                        "sqlReaderStoredProcedureName": "dbo.usp_get_run_counts",
+                                                        "storedProcedureParameters": {
+                                                            "run_id": {
+                                                                "type": "String",
+                                                                "value": {
+                                                                    "value": "@pipeline().RunId",
+                                                                    "type": "Expression"
+                                                                }
+                                                            },
+                                                            "table_name": {
+                                                                "type": "String",
+                                                                "value": {
+                                                                    "value": "@item().folder_path",
+                                                                    "type": "Expression"
+                                                                }
+                                                            }
+                                                        },
+                                                        "queryTimeout": "02:00:00",
+                                                        "partitionOption": "None"
+                                                    },
+                                                    "dataset": {
+                                                        "referenceName": "ds_sqldb_dev",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {}
+                                                    },
+                                                    "firstRowOnly": true
+                                                }
+                                            },
+                                            {
+                                                "name": "Lookup_New_Watermark",
+                                                "type": "Lookup",
+                                                "dependsOn": [
+                                                    {
+                                                        "activity": "Lookup_Run_Counts",
+                                                        "dependencyConditions": [
+                                                            "Succeeded"
+                                                        ]
+                                                    }
+                                                ],
+                                                "policy": {
+                                                    "timeout": "0.00:10:00",
+                                                    "retry": 2,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "source": {
+                                                        "type": "AzureSqlSource",
+                                                        "sqlReaderStoredProcedureName": "dbo.usp_get_watermark",
+                                                        "storedProcedureParameters": {
+                                                            "table_name": {
+                                                                "type": "String",
+                                                                "value": {
+                                                                    "value": "@item().folder_path",
+                                                                    "type": "Expression"
+                                                                }
+                                                            }
+                                                        },
+                                                        "queryTimeout": "02:00:00",
+                                                        "partitionOption": "None"
+                                                    },
+                                                    "dataset": {
+                                                        "referenceName": "ds_sqldb_dev",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {}
+                                                    },
+                                                    "firstRowOnly": true
+                                                }
+                                            },
+                                            {
+                                                "name": "Log_Folder_Success",
+                                                "type": "SqlServerStoredProcedure",
+                                                "dependsOn": [
+                                                    {
+                                                        "activity": "Lookup_New_Watermark",
+                                                        "dependencyConditions": [
+                                                            "Succeeded"
+                                                        ]
+                                                    }
+                                                ],
+                                                "policy": {
+                                                    "timeout": "0.00:10:00",
+                                                    "retry": 2,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "storedProcedureName": "dbo.usp_update_pipeline_run_audit",
+                                                    "storedProcedureParameters": {
+                                                        "run_id": {
+                                                            "value": {
+                                                                "value": "@pipeline().RunId",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "folder_name": {
+                                                            "value": {
+                                                                "value": "@item().folder_path",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "end_time": {
+                                                            "value": {
+                                                                "value": "@utcNow()",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        },
+                                                        "status": {
+                                                            "value": "Succeeded",
+                                                            "type": "String"
+                                                        },
+                                                        "files_copied": {
+                                                            "value": {
+                                                                "value": "@activity('Lookup_Run_Counts').output.firstRow.files_copied",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "Int32"
+                                                        },
+                                                        "files_skipped": {
+                                                            "value": {
+                                                                "value": "@activity('Lookup_Run_Counts').output.firstRow.files_skipped",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "Int32"
+                                                        },
+                                                        "files_failed": {
+                                                            "value": {
+                                                                "value": "@activity('Lookup_Run_Counts').output.firstRow.files_failed",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "Int32"
+                                                        },
+                                                        "new_watermark": {
+                                                            "value": {
+                                                                "value": "@activity('Lookup_New_Watermark').output.firstRow.last_modified",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        }
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "ls_sqldb_watermark_dev",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            },
+                                            {
+                                                "name": "Log_Folder_Failed",
+                                                "type": "SqlServerStoredProcedure",
+                                                "dependsOn": [
+                                                    {
+                                                        "activity": "Execute_Child_Pipeline",
+                                                        "dependencyConditions": [
+                                                            "Failed"
+                                                        ]
+                                                    }
+                                                ],
+                                                "policy": {
+                                                    "timeout": "0.00:10:00",
+                                                    "retry": 2,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "storedProcedureName": "dbo.usp_update_pipeline_run_audit",
+                                                    "storedProcedureParameters": {
+                                                        "run_id": {
+                                                            "value": {
+                                                                "value": "@pipeline().RunId",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "folder_name": {
+                                                            "value": {
+                                                                "value": "@item().folder_path",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "String"
+                                                        },
+                                                        "end_time": {
+                                                            "value": {
+                                                                "value": "@utcNow()",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "DateTime"
+                                                        },
+                                                        "status": {
+                                                            "value": "Failed",
+                                                            "type": "String"
+                                                        },
+                                                        "files_copied": {
+                                                            "value": "0",
+                                                            "type": "Int32"
+                                                        },
+                                                        "files_skipped": {
+                                                            "value": "0",
+                                                            "type": "Int32"
+                                                        },
+                                                        "files_failed": {
+                                                            "value": {
+                                                                "value": "@length(activity('Filter_CSV_Files').output.value)",
+                                                                "type": "Expression"
+                                                            },
+                                                            "type": "Int32"
+                                                        },
+                                                        "new_watermark": {
+                                                            "value": null,
+                                                            "type": "DateTime"
+                                                        }
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "ls_sqldb_watermark_dev",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            },
+                                            {
+                                                "name": "Notify_Child_Failure",
+                                                "type": "WebActivity",
+                                                "dependsOn": [
+                                                    {
+                                                        "activity": "Log_Folder_Failed",
+                                                        "dependencyConditions": [
+                                                            "Succeeded",
+                                                            "Failed"
+                                                        ]
+                                                    }
+                                                ],
+                                                "policy": {
+                                                    "timeout": "0.00:10:00",
+                                                    "retry": 1,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "method": "POST",
+                                                    "headers": {},
+                                                    "url": "https://httpbin.org/post",
+                                                    "body": {
+                                                        "value": "@concat('{\"title\": \"ADF Pipeline Failure\", \"text\": \"Bronze pipeline failed for folder: ', item().folder_path, '. Pipeline: ', pipeline().Pipeline, '. RunId: ', pipeline().RunId, '. Time: ', utcNow(), '\"}')",
+                                                        "type": "Expression"
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Notify_Pipeline_Failure",
+                        "type": "WebActivity",
+                        "dependsOn": [
+                            {
+                                "activity": "ForEach_Folder",
+                                "dependencyConditions": [
+                                    "Failed"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.00:10:00",
+                            "retry": 1,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "method": "POST",
+                            "headers": {},
+                            "url": "https://httpbin.org/post",
+                            "body": {
+                                "value": "@concat('{\"title\": \"ADF Pipeline Failure\", \"text\": \"Bronze ingestion pipeline failed. Pipeline: ', pipeline().Pipeline, '. RunId: ', pipeline().RunId, '. Time: ', utcNow(), '\"}')",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2026-03-30T16:47:30Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/ds_sqldb_dev')]",
+                "[concat(variables('factoryId'), '/linkedServices/ls_sqldb_watermark_dev')]",
+                "[concat(variables('factoryId'), '/datasets/ds_src_file_dev')]",
+                "[concat(variables('factoryId'), '/pipelines/pl_bronze_copy_dev')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/pl_master_dev')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Execute_Bronze",
+                        "type": "ExecutePipeline",
+                        "dependsOn": [],
+                        "policy": {
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "pipeline": {
+                                "referenceName": "pl_bronze_ingest_dev",
+                                "type": "PipelineReference"
+                            },
+                            "waitOnCompletion": true,
+                            "parameters": {}
+                        }
+                    },
+                    {
+                        "name": "Execute_Silver",
+                        "type": "ExecutePipeline",
+                        "dependsOn": [
+                            {
+                                "activity": "Execute_Bronze",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "pipeline": {
+                                "referenceName": "pl_silver_dev",
+                                "type": "PipelineReference"
+                            },
+                            "waitOnCompletion": true,
+                            "parameters": {}
+                        }
+                    },
+                    {
+                        "name": "Execute_Gold",
+                        "type": "ExecutePipeline",
+                        "dependsOn": [
+                            {
+                                "activity": "Execute_Silver",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "pipeline": {
+                                "referenceName": "pl_gold_dev",
+                                "type": "PipelineReference"
+                            },
+                            "waitOnCompletion": true,
+                            "parameters": {}
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2026-04-13T15:43:48Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/pipelines/pl_bronze_ingest_dev')]",
+                "[concat(variables('factoryId'), '/pipelines/pl_silver_dev')]",
+                "[concat(variables('factoryId'), '/pipelines/pl_gold_dev')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/tr_daily_master')]",
+            "type": "Microsoft.DataFactory/factories/triggers",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "runtimeState": "Stopped",
+                "pipelines": [
+                    {
+                        "pipelineReference": {
+                            "referenceName": "pl_master_dev",
+                            "type": "PipelineReference"
+                        },
+                        "parameters": {}
+                    }
+                ],
+                "type": "ScheduleTrigger",
+                "typeProperties": {
+                    "recurrence": {
+                        "frequency": "Day",
+                        "interval": 1,
+                        "startTime": "2026-04-07T02:10:00",
+                        "timeZone": "India Standard Time",
+                        "schedule": {
+                            "minutes": [
+                                0
+                            ],
+                            "hours": [
+                                1
+                            ]
+                        }
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/pipelines/pl_master_dev')]"
+            ]
+        }
+    ]
+}
