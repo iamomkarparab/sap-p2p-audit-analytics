@@ -381,7 +381,7 @@
 												},
 												"rows_copied": {
 													"value": {
-														"value": "@activity('Copy_File_To_Bronze').output.filesWritten",
+														"value": "@activity('Copy_File_To_Bronze').output.rowsCopied",
 														"type": "Expression"
 													},
 													"type": "Int32"
